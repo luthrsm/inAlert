@@ -2,33 +2,63 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Font from 'expo-font'
-import {StyleSheet} from 'react-native';
+import { StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 
-//telas Bando de imagens sem direito autoral
-import BemVindo from './components/bemVindo';
-import Home from './components/home';
-import Grafico from './components/grafico';
-import CriarAmbiente from './components/criarAbiente';
+import BemVindo from './src/bemVindo';
+import Home from './src/home';
+import Grafico from './src/grafico';
+import CriarAmbiente from './src/criarAbiente';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
 
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadFonts = async () => {
+      await Font.loadAsync({
+        'Poppins-Regular': require('./assets/fonts/poppins/Poppins-Regular.ttf'),
+        'Poppins-Medium': require('./assets/fonts/poppins/Poppins-Medium.ttf'),
+        'Poppins-Bold': require('./assets/fonts/poppins/Poppins-Bold.ttf'),
+        'Inter-Bold': require('./assets/fonts/inter/Inter_18pt-Bold.ttf'),
+        'Inter-Medium':  require('./assets/fonts/inter/Inter_18pt-Medium.ttf'),
+        'Inter-Regular':  require('./assets/fonts/inter/Inter_18pt-Regular.ttf'),
+
+
+      });
+      setFontsLoaded(true);
+    };
+
+    loadFonts();
+  }, []); if (!fontsLoaded) {
+    return null;
+  }
+
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="BemVindo" component={BemVindo} />
-        <Stack.Screen name="Home" component={Home} />
-        <Stack.Screen name="CriarAmbiente" component={CriarAmbiente} />
+    <>
+      <StatusBar
+      style="light-content"
+      />
+      <NavigationContainer>
 
-        
-  
-        <Stack.Screen name="Grafico" component={Grafico} />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
 
-            
-      </Stack.Navigator>
-    </NavigationContainer>
+          <Stack.Screen name="BemVindo" component={BemVindo} />
+          <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="CriarAmbiente" component={CriarAmbiente} />
+          <Stack.Screen name="Grafico" component={Grafico} />
+
+
+
+
+
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
 
 
   );
