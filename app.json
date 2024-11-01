@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "inalert",
-    "slug": "snack-9ef7eb96-8de0-4fed-89c4-dcdb2ec518e8",
+    "name": "inAlertApp",
+    "slug": "inAlertApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/imagens/icon.png",
@@ -16,12 +16,23 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/imagens/adaptive-icon.png",
+        "foregroundImage": "./assets/imagens/adaptative-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.luthrsm.inAlertApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["peripheral", "central"],
+          "bluetoothAlwaysPermission": "Allow $(PRODUCT_NAME) to connect to bluetooth devices"
+        }
+      ]
+    ]
   }
 }
