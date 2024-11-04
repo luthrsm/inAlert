@@ -4,100 +4,160 @@ import { LineChart } from 'react-native-chart-kit';
 import { View, Text, Image, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Menu from '../../components/menu';
-import BleManager from 'react-native-ble-manager';
-import { PermissionsAndroid } from 'react-native';
+import supabase from '../Services/supabaseConfig';
 
-//const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b'; //  UUID doserviço
-//const VALOR_SENSOR_GAS_UUID = '731b4eda-de7a-43ed-91e2-578700a5fa5e'; //  UUID dacaracterística
+
+
+
+const MyLineChart = React.memo(({ chartData }) => {
+    return (
+        <LineChart
+            data={chartData}
+            width={Dimensions.get("window").width}
+            height={300}
+            yAxisSuffix='ppm'
+            yAxisInterval={1}
+            chartConfig={{
+                backgroundColor: "#fff",
+                backgroundGradientFrom: "#ffffff",
+                backgroundGradientTo: "#ffffff",
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(57, 145, 167, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(214,74,51, ${opacity})`,
+                style: {
+                    borderRadius: 16
+                },
+                propsForDots: {
+                    r: '6',
+                    strokeWidth: '2',
+                    stroke: '#3991A7',
+                },
+            }}
+            bezier
+            style={{
+                marginVertical: 8,
+                borderRadius: 16,
+                margin: 15
+            }}
+        />
+    );
+}, (prevProps, nextProps) => {
+    // Comparar apenas os labels e datasets
+    return (
+        JSON.stringify(prevProps.chartData.labels) === JSON.stringify(nextProps.chartData.labels) &&
+        JSON.stringify(prevProps.chartData.datasets[0].data) === JSON.stringify(nextProps.chartData.datasets[0].data)
+    );
+});
 
 const Grafico = () => {
     const scrollViewRef = useRef(null);
-    //const [sensorData, setSensorData] = useState([]);
-    //const [isConnected, setIsConnected] = useState(false);
-    //const deviceId = '4fafc201-1fb5-459e-8fcc-c5c9c331914b'; // UUID do ESP32
+    const [chartData, setChartData] = useState({
+        labels: [],
+        datasets: [{ data: [] }]
+    });
+    const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [monitoring, setMonitoring] = useState(false);
+    const [iconName, setIconName] = useState('play');
+    const [intervalId, setIntervalId] = useState(null);
 
+    const fetchChartData = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('teste')
+            .select('nivelRisco, valorGas,time')
+            .order('time', { ascending: true });
     
-    // useEffect(() => {
-    //     const initBLE = async () => {
-    //         console.log('Iniciando BLE...');
-    //         try {
-    //             const result = await BleManager.start({ showAlert: false });
-    //             console.log('BLE Initialized:', result);
-    //             const permission = await PermissionsAndroid.request(
-    //                 PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-    //             );
-    //             console.log('Bluetooth permission:', permission);
-    //             if (permission === PermissionsAndroid.RESULTS.GRANTED) {
-    //                 console.log('Bluetooth permission granted');
-    //                 connectToDevice(deviceId);
-    //             } else {
-    //                 console.warn('Bluetooth permission denied');
-    //             }
-    //         } catch (error) {
-    //             console.error('BLE Initialization Error:', error);
-    //         }
-    //     };
-    //     initBLE();
-    // }, []);
+        setLoading(false);
     
-
-    // const handleDiscoverPeripheral = (peripheral) => {
-    //     console.log('Discovered peripheral:', peripheral);
-    //     if (peripheral.id === deviceId) { // Verifica se é o dispositivo desejado
-    //         console.log('Found target device, attempting to connect...');
-    //         connectToDevice(deviceId);
-    //     }
-    // };
-
-    // const connectToDevice = (deviceId) => {
-    //     console.log('Connecting to device:', deviceId);
-    //     BleManager.connect(deviceId)
-    //         .then(() => {
-    //             console.log('Connected to', deviceId);
-    //             setIsConnected(true);
-    //             readData(deviceId);
-    //         })
-    //         .catch((error) => {
-    //             console.log('Connection error', error);
-    //         });
-    // };
+        if (error) {
+            console.error("Erro ao buscar dados:", error);
+            setErrorMessage('Erro ao carregar dados.');
+            return;
+        }
+    
+        if (data && data.length > 0) {
+            // Use 'nivelRisco' como labels no eixo X
+            const newLabels = data.map(item => item.nivelRisco);
+            const newValues = data.map(item => item.valorGas);
+    
+            setChartData({
+                labels: newLabels,
+                datasets: [{ data: newValues }]
+            });
+        } else {
+            console.log("Nenhum dado encontrado.");
+            setChartData({ labels: [], datasets: [{ data: [] }] });
+        }
+    };
     
     
 
-    // const readData = (deviceId) => {
-    //     BleManager.retrieveServices(deviceId).then(() => {
-    //         BleManager.startNotification(deviceId, SERVICE_UUID, VALOR_SENSOR_GAS_UUID)
-    //             .then(() => {
-    //                 console.log('Notification started');
-    //             })
-    //             .catch((error) => {
-    //                 console.error('Notification Error:', error);
-    //             });
-    //     });
+    const startMonitoring = async () => {
+        setMonitoring(true);
+        setIconName('stop');
+        
+        await fetchChartData(); // Busca dados inicialmente
+
+        const id = setInterval(fetchChartData, 30000);
+        setIntervalId(id);
+    };
+
+    const stopMonitoring = async () => {
+        setMonitoring(false);
+        setIconName('play');
+        setChartData({ labels: [], datasets: [{ data: [] }] });
     
-    //     // Escute os dados recebidos
-    //     BleManager.on('characteristicValueChange', (data) => {
-    //         console.log('Characteristic value changed:', data);
-    //         const sensorValue = parseInt(data.value, 10); // Adicione a base 10
-    //         console.log('Parsed sensor value:', sensorValue);
-    //         if (!isNaN(sensorValue)) {
-    //             setSensorData(prevData => [...prevData, sensorValue]);
-    //         } else {
-    //             console.warn('Received invalid sensor value:', data.value);
-    //         }
-    //     });
-    // };
+        // Apagar todos os dados do Supabase
+        try {
+            const { error } = await supabase
+                .from('teste')  // Substitua 'teste' pelo nome da sua tabela
+                .delete()
+                .neq('id', 0);  // Exclui todos os registros; ajuste conforme necessário
+    
+            if (error) {
+                console.error("Erro ao deletar dados:", error);
+                setErrorMessage('Erro ao deletar dados.');
+            } else {
+                console.log("Dados deletados com sucesso.");
+            }
+        } catch (err) {
+            console.error("Erro na solicitação de exclusão:", err);
+            setErrorMessage('Erro ao deletar dados.');
+        }
+    
+        // Limpar o intervalo de atualização
+        if (intervalId) {
+            clearInterval(intervalId);
+            setIntervalId(null);
+        }
+    };
     
 
-    // const formatDataForChart = () => {
-    //     const validData = sensorData.filter(data => typeof data === 'number' && !isNaN(data));
-    //     return {
-    //         labels: validData.map((_, index) => index + 1), // Labels como 1, 2, 3...
-    //         datasets: [{
-    //             data: validData,
-    //         }]
-    //     };
-    // };
+    useEffect(() => {
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        };
+    }, [intervalId]);
+
+    if (loading) {
+        return <Text>Carregando...</Text>;
+    }
+
+    if (errorMessage) {
+        return <Text>{errorMessage}</Text>;
+    }
+
+    const handleButtonPress = () => {
+        if (monitoring) {
+            stopMonitoring();
+        } else {
+            startMonitoring();
+        }
+    };
+    
     
 
     return (
@@ -105,59 +165,25 @@ const Grafico = () => {
             <View style={styles.headerContainer}>
                 <Image style={styles.logo} source={require('../../assets/imagens/inAlert.png')} />
             </View>
-            <View style={{ width: '80%', padding: 20, marginBottom: 10 }}>
-                <Text style={styles.texto}>Gráfico</Text>
+            <View style={{ padding: 20, marginBottom: 10 }}>
+                <Text style={styles.texto}>Monitoramento em Tempo real</Text>
             </View>
 
-            {/* Exibir o gráfico linear */}
-            <LineChart
-                data={formatDataForChart()}
-                width={Dimensions.get("window").width}
-                height={300}
-                yAxisLabel='$'
-                yAxisSuffix='k'
-                yAxisInterval={1}
-                chartConfig={{
-                    backgroundColor: "#fff",
-                    backgroundGradientFrom: "#ffffff",
-                    backgroundGradientTo: "#ffffff",
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(57, 145, 167, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(214,74,51, ${opacity})`,
-                    style: {
-                        borderRadius: 16
-                    },
-                    propsForDots: {
-                        r: '6',
-                        strokeWidth: '2',
-                        stroke: '#3991A7',
-                    }
-                }}
-                bezier style={{
-                    marginVertical: 8,
-                    borderRadius: 16
-                }}
-            />
+            {monitoring && chartData.labels.length > 0 ? (
+                <MyLineChart chartData={chartData} /> // Usando o componente memoizado
+            ) : (
+                <View style={styles.placeholder}>
+                    <Text style={styles.text}>Clique no botão para iniciar o monitoramento do seu ambiente</Text>
+                </View>
+            )}
 
-            <ScrollView
-                ref={scrollViewRef}
-                style={styles.scrollView}
-                showsVerticalScrollIndicator={true}
-            >
+            <ScrollView ref={scrollViewRef} style={styles.scrollView} showsVerticalScrollIndicator={true}>
                 <View style={{ justifyContent: 'center', alignItems: 'center' }}>
-                    <TouchableOpacity style={styles.botaoRedondo}>
-                        <MaterialCommunityIcons name="play" size={30} color="#fff" style={styles.icons} />
+                    <TouchableOpacity style={styles.botaoRedondo} onPress={handleButtonPress}>
+                        <MaterialCommunityIcons name={iconName} size={30} color="#fff" style={styles.icons} />
                     </TouchableOpacity>
                 </View>
 
-                <View style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 24 }}>
-                    <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText}> Exibir arquivo txt </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText}> Último registro </Text>
-                    </TouchableOpacity>
-                </View>
             </ScrollView>
 
             <Menu />
@@ -174,22 +200,20 @@ const styles = StyleSheet.create({
         backgroundColor: '#000000',
         height: '9%',
         width: '100%',
-        borderBottomLeftRadius: 8,
-        borderBottomRightRadius: 8,
         padding: 20,
         paddingLeft: 30,
-        marginTop: '10%',
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: "space-between",
+        justifyContent: 'space-between',
     },
     logo: {
         width: 100,
         height: 20,
     },
     texto: {
-        fontSize: 25,
-        fontWeight: '700',
+        fontSize: 23,
+        fontFamily: 'Poppins-Bold',
+        
     },
     botaoRedondo: {
         padding: 10,
@@ -200,6 +224,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#D64A33',
         alignItems: 'center',
         justifyContent: 'center'
+    },
+    placeholder: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginVertical: 20,
     },
     button: {
         padding: 10,
@@ -216,6 +245,12 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#fff'
     },
+    text:{
+        fontFamily: 'Poppins-Regular',
+        fontSize: 16,
+        margin: 15,
+        textAlign: 'center'
+    }
 });
 
 export default Grafico;

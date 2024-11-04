@@ -40,55 +40,6 @@ export default function App() {
     loadFonts();
   }, []);
 
-  // Inicialização do BLE
-  const connectToDevice = async (deviceId) => {
-    try {
-      // Conecta ao dispositivo
-      const connected = await BleManager.connect(deviceId);
-      console.log('Connected to', deviceId);
-
-      // Descubra serviços e características
-      const peripheralInfo = await BleManager.retrieveServices(deviceId);
-      console.log('Peripheral info:', peripheralInfo);
-
-      // Lê a característica do sensor de gás
-      BleManager.read(deviceId, SERVICE_UUID, VALOR_SENSOR_GAS_UUID)
-        .then((data) => {
-          console.log('Sensor gas value:', data); // Aqui você terá o valor do sensor
-        })
-        .catch((error) => {
-          console.error('Error reading characteristic:', error);
-        });
-    } catch (error) {
-      console.error('Connection error:', error);
-    }
-  };
-
-  // No useEffect que inicializa o BLE, chame connectToDevice
-  useEffect(() => {
-    const initBLE = async () => {
-      try {
-        const result = await BleManager.start();
-        console.log('BLE Initialized:', result);
-
-        // Solicita permissão para Bluetooth
-        const permission = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
-        );
-
-        if (permission === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('Bluetooth permission granted');
-          connectToDevice(deviceId);
-        } else {
-          console.warn('Bluetooth permission denied');
-        }
-      } catch (error) {
-        console.error('BLE Initialization Error:', error);
-      }
-    };
-
-    initBLE();
-  }, []);
 
   if (!fontsLoaded) {
     return null;
@@ -102,9 +53,9 @@ export default function App() {
           <Stack.Screen name="BemVindo" component={BemVindo} />
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="CriarAmbiente" component={CriarAmbiente} />
-          <Stack.Screen name="Grafico" component={Grafico} />
           <Stack.Screen name="Espacos" component={Espacos} />
           <Stack.Screen name="CriarEspaco" component={CriarEspaco} />
+          <Stack.Screen name="Grafico" component={Grafico} />
         </Stack.Navigator>
       </NavigationContainer>
     </>
